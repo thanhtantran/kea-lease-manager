@@ -59,8 +59,9 @@ Create a new file at /etc/init.d/kea-lease-manager:
 
 ```bash
 vi /etc/init.d/kea-lease-manager
-Paste the following content (adjust paths as needed):
 ```
+Paste the following content (adjust paths as needed):
+
 ```text
 #!/bin/sh /etc/rc.common
 # Init script for KEA Lease Manager
