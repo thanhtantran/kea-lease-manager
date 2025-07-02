@@ -1,0 +1,556 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kea DHCP Lease Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header-info {
+            background-color: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .search-container {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 200px;
+        }
+        .clear-search {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .refresh-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .refresh-btn:hover {
+            background-color: #218838;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #e8f4fd;
+        }
+        .ip-cell {
+            font-family: monospace;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .mac-cell {
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .hostname-cell {
+            font-weight: bold;
+        }
+        .action-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin: 2px;
+        }
+        .action-btn:hover {
+            background-color: #0056b3;
+        }
+        .history-btn {
+            background-color: #6f42c1;
+            color: white;
+            border: none;
+            padding: 5px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin: 2px;
+        }
+        .history-btn:hover {
+            background-color: #5a2d91;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+        .config-box {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+        .copy-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .copy-btn:hover {
+            background-color: #5a6268;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #856404;
+        }
+        .stat-label {
+            color: #856404;
+            font-size: 0.9em;
+        }
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+        .subnet-info {
+            background-color: #d1ecf1;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .subnet-item {
+            margin: 5px 0;
+            font-family: monospace;
+        }
+        .hidden {
+            display: none;
+        }
+        .history-table {
+            width: 100%;
+            margin-top: 15px;
+        }
+        .history-table th {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Kea DHCP Lease Manager</h1>
+        
+        <div class="header-info">
+            <div>
+                <strong>Lease File:</strong> {{ LEASE_FILE or '/tmp/kea-leases4.csv' }}
+            </div>
+            <div>
+                <strong>Last Updated:</strong> <span id="lastUpdate">{{ moment().format('YYYY-MM-DD HH:mm:ss') }}</span>
+            </div>
+            <a href="/refresh" class="refresh-btn">🔄 Refresh</a>
+        </div>
+
+        {% if subnets %}
+        <div class="subnet-info">
+            <strong>📊 Configured Subnets:</strong>
+            {% for subnet_id, subnet_range in subnets.items() %}
+            <div class="subnet-item">ID {{ subnet_id }}: {{ subnet_range }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="error">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        {% if leases %}
+        <div class="search-container">
+            <label for="searchInput"><strong>🔍 Quick Search:</strong></label>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search by IP, MAC, or hostname..." onkeyup="filterTable()">
+            <button class="clear-search" onclick="clearSearch()">Clear</button>
+            <span id="searchResults"></span>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number" id="totalLeases">{{ leases|length }}</div>
+                <div class="stat-label">Active Leases</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">{{ leases|selectattr('hostname')|list|length }}</div>
+                <div class="stat-label">With Hostnames</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">{{ (leases|selectattr('expire_timestamp')|map(attribute='expire_timestamp')|select('>', now_timestamp)|list|length) if now_timestamp else 'N/A' }}</div>
+                <div class="stat-label">Not Expired</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="visibleLeases">{{ leases|length }}</div>
+                <div class="stat-label">Visible</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="leasesTable">
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>MAC Address</th>
+                        <th>Hostname</th>
+                        <th>Expires</th>
+                        <th>Subnet ID</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lease in leases %}
+                    <tr class="lease-row">
+                        <td class="ip-cell">{{ lease.ip }}</td>
+                        <td class="mac-cell">{{ lease.mac }}</td>
+                        <td class="hostname-cell">{{ lease.hostname or '-' }}</td>
+                        <td>{{ lease.expire }}</td>
+                        <td>{{ lease.subnet_id }}</td>
+                        <td>
+                            <button class="action-btn" onclick="showReservation('{{ lease.ip }}', '{{ lease.mac }}', '{{ lease.hostname }}')">
+                                Make Static
+                            </button>
+                            <button class="history-btn" onclick="showHistory('{{ lease.ip }}')">
+                                History
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="no-data">
+            No active leases found.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Modal for reservation config -->
+    <div id="reservationModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('reservationModal')">&times;</span>
+            <h2>Static DHCP Reservation Configuration</h2>
+            <div id="reservationContent"></div>
+        </div>
+    </div>
+
+    <!-- Modal for lease history -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('historyModal')">&times;</span>
+            <h2 id="historyTitle">Lease History</h2>
+            <div id="historyContent"></div>
+        </div>
+    </div>
+
+    <script>
+        function filterTable() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById('leasesTable');
+            const rows = table.getElementsByClassName('lease-row');
+            let visibleCount = 0;
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.getElementsByTagName('td');
+                let showRow = false;
+
+                // Search in IP, MAC, and hostname columns
+                for (let j = 0; j < 3; j++) {
+                    if (cells[j] && cells[j].textContent.toLowerCase().indexOf(filter) > -1) {
+                        showRow = true;
+                        break;
+                    }
+                }
+
+                if (showRow) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+
+            // Update visible count
+            document.getElementById('visibleLeases').textContent = visibleCount;
+            
+            // Update search results
+            const searchResults = document.getElementById('searchResults');
+            if (filter) {
+                searchResults.textContent = `Showing ${visibleCount} of ${rows.length} leases`;
+            } else {
+                searchResults.textContent = '';
+            }
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            filterTable();
+        }
+
+        function showReservation(ip, mac, hostname) {
+            fetch('/api/reservation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ip: ip,
+                    mac: mac,
+                    hostname: hostname
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                
+                const content = `
+                    <h3>JSON Configuration Snippet:</h3>
+                    <div class="config-box" id="jsonConfig">${data.json_config}</div>
+                    <button class="copy-btn" onclick="copyToClipboard('jsonConfig')">Copy JSON</button>
+                    
+                    <h3>Complete Instructions:</h3>
+                    <div class="config-box" id="instructions">${data.instructions}</div>
+                    <button class="copy-btn" onclick="copyToClipboard('instructions')">Copy Instructions</button>
+                `;
+                
+                document.getElementById('reservationContent').innerHTML = content;
+                document.getElementById('reservationModal').style.display = 'block';
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
+            });
+        }
+
+        function showHistory(ip) {
+            fetch('/api/lease-history/' + encodeURIComponent(ip))
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                document.getElementById('historyTitle').textContent = `Lease History for ${ip}`;
+                
+                let content = `<p><strong>Total entries found:</strong> ${data.history.length}</p>`;
+                
+                if (data.history.length > 0) {
+                    content += `
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>MAC Address</th>
+                                    <th>Hostname</th>
+                                    <th>Expires</th>
+                                    <th>State</th>
+                                    <th>Subnet ID</th>
+                                    <th>Valid Lifetime</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.history.forEach(entry => {
+                        content += `
+                            <tr>
+                                <td class="mac-cell">${entry.mac}</td>
+                                <td>${entry.hostname || '-'}</td>
+                                <td>${entry.expire}</td>
+                                <td>${entry.state}</td>
+                                <td>${entry.subnet_id}</td>
+                                <td>${entry.valid_lifetime}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    content += '</tbody></table>';
+                } else {
+                    content += '<p><em>No lease history found for this IP address.</em></p>';
+                }
+                
+                document.getElementById('historyContent').innerHTML = content;
+                document.getElementById('historyModal').style.display = 'block';
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
+            });
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Copied to clipboard!');
+            }).catch(function(err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Copied to clipboard!');
+            });
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const reservationModal = document.getElementById('reservationModal');
+            const historyModal = document.getElementById('historyModal');
+            
+            if (event.target == reservationModal) {
+                closeModal('reservationModal');
+            }
+            if (event.target == historyModal) {
+                closeModal('historyModal');
+            }
+        }
+
+        // Auto-refresh every 30 seconds (only if no modals are open)
+        setInterval(function() {
+            const reservationModal = document.getElementById('reservationModal');
+            const historyModal = document.getElementById('historyModal');
+            
+            if ((!reservationModal.style.display || reservationModal.style.display === 'none') &&
+                (!historyModal.style.display || historyModal.style.display === 'none')) {
+                location.reload();
+            }
+        }, 30000);
+
+        // Update last updated time
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+    </script>
+</body>
+</html>
